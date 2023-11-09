@@ -18,9 +18,9 @@ centroids <- taxi_shp %>%
   bind_cols(as_data_frame(st_coordinates(.)))
 
 # Calculate the total amount of money spent in each location
-money <- aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$DOLocationID), FUN=sum)
-  %>% mutate_at(c('location_id'), as.character)
-  %>% left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
+money <- aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$DOLocationID), FUN=sum) %>%
+  mutate_at(c('location_id'), as.character) %>%
+  left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
 
 # Plot the map
 ggplot() + 
