@@ -2,6 +2,8 @@
 library(sf)
 # Read Parquet file
 library(arrow)
+# Read CSV file
+library(readr)
 # Functions to work with dataframes
 library(dplyr)
 
