@@ -6,6 +6,8 @@ library(arrow)
 library(readr)
 # Functions to work with dataframes
 library(dplyr)
+# Create plots
+library(ggplot2)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON')
