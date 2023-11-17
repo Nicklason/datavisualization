@@ -10,6 +10,7 @@ library(dplyr)
 library(ggplot2)
 # replace_na function
 library(tidyr)
+library(shiny)
 # Don't use scientific notation in the plot
 options(scipen = 999)
 
@@ -25,35 +26,53 @@ centroids <- taxi_shp %>%
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
 
-# Calculate the total amount of money spent in each location
-total <- merge(
-    aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$DOLocationID), FUN=sum), # nolint
-    aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$PULocationID), FUN=sum), # nolint
-    by="location_id", # nolint
-    all.x=TRUE, # nolint
-    all.y=TRUE # nolint
-  ) %>%
-  mutate_at(c('x.x','x.y'), ~replace_na(.,0)) %>%
-  mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
-  mutate_at(c('location_id'), as.character) %>% # nolint
-  left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
-
-# Plot the map
-ggplot() + 
-  # Plot the locations and color them based on the total amount of money spent
-  geom_sf(data = total, aes(group = location_id, fill = money), color = "white") + 
-  geom_segment(data = total, aes(x = longitude.x, y = latitude.x, xend = longitude.y, yend = latitude.y, color=freq),
-    arrow = arrow(length = unit(0.01, "npc")))+
-    scale_colour_distiller(palette="Reds", name="Frequency", guide = "colorbar") +
-    coord_equal() +
-  # Plot the labels for the locations
-  geom_text(aes(X, Y, label = location_id), data = centroids, size = 1) +
-  # Remove x and y axis
-  theme_void() +
-  # Change color gradient
-  scale_fill_gradient(
-    low = "yellow",
-    high = "red",
-    na.value = "grey50",
-    trans = "log10"
+  # Define UI for application
+ui <- fluidPage(
+  titlePanel("Taxi Fares Map"),
+  sidebarLayout(
+    sidebarPanel(
+      # Add any input controls if needed
+    ),
+    mainPanel(
+      plotOutput("taxiPlot")
+    )
   )
+)
+
+# Assuming that 'taxi_data', 'taxi_shp', and 'centroids' are defined elsewhere in the code
+# Assuming that 'ui' is defined elsewhere in the code
+
+# Define server logic
+server <- function(input, output) {
+  output$taxiPlot <- renderPlot({
+    # Calculate the total amount of money spent in each location
+    total <- merge(
+      aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$DOLocationID), FUN=sum),
+      aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$PULocationID), FUN=sum),
+      by="location_id",
+      all.x=TRUE,
+      all.y=TRUE
+    ) %>%
+    mutate_at(c('x.x','x.y'), ~replace_na(.,0)) %>%
+    mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
+    mutate_at(c('location_id'), as.character) %>%
+    left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
+
+    # Plot the map
+    ggplot() +
+    geom_sf(data = total, aes(group = location_id, fill = money), color = "white") +
+    scale_colour_distiller(palette="Reds", name="Frequency", guide = "colorbar") +
+    coord_sf() +
+    geom_text(aes(X, Y, label = location_id), data = centroids, size = 1) +
+    theme_void() +
+    scale_fill_gradient(
+      low = "yellow",
+      high = "red",
+      na.value = "grey50",
+      trans = "log10"
+    )
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
