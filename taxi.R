@@ -10,7 +10,14 @@ library(dplyr)
 library(ggplot2)
 # replace_na function
 library(tidyr)
+# shiny app
 library(shiny)
+library(rworldmap)
+library(maps)
+library(geosphere)
+library(data.table)
+library(ggthemes)
+library(plyr)
 # Don't use scientific notation in the plot
 options(scipen = 999)
 
@@ -38,9 +45,6 @@ ui <- fluidPage(
     )
   )
 )
-
-# Assuming that 'taxi_data', 'taxi_shp', and 'centroids' are defined elsewhere in the code
-# Assuming that 'ui' is defined elsewhere in the code
 
 # Define server logic
 server <- function(input, output) {
