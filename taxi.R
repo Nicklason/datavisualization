@@ -53,3 +53,29 @@ ggplot() +
     na.value = "grey50",
     trans = "log10"
   )
+
+#new plot
+time_difference <- difftime(taxi_data$tpep_dropoff_datetime, taxi_data$tpep_pickup_datetime, "pct", "hours")
+
+distance_travelled <- c(taxi_data$trip_distance)
+
+speed <- distance_travelled / as.numeric(sub(".*\\s([0-9]+\\.[0-9]+).*", "\\1", time_difference))
+speed_limited <- speed[speed<100 & speed>0]
+
+#plot graph for average speed
+boxplot(speed_limited,outline = FALSE, xlab = "Taxi cap" , ylab = "Speed [mph]")
+title("Speed")
+
+speed_passengers_distance <- data.frame( "speed" = speed, "passenger_count" = taxi_data$passenger_count, "distance" = taxi_data$trip_distance) 
+
+# Accounted for outliers based on min 0 mph and max speed of 100 mph 
+speed_passengers_distance_limited <- speed_passengers_distance[speed_passengers_distance$speed < 100 & speed_passengers_distance$speed > 0,]
+
+#plot graph for average speed based on amount of passengers  
+boxplot(speed ~ passenger_count, data = speed_passengers_distance_limited, outline = FALSE, xlab = "Amount of passagers", ylab = "Speed [mph]")
+title("Speed based on amount of passengers")
+
+
+#plot graph for distanced traveled based on amount of passengers  
+boxplot(distance ~ passenger_count, data = speed_passengers_distance_limited, outline = FALSE, xlab = "Amount of passagers", ylab = "Distance [miles]" )
+title("Distance traveled based on amount of passengers") 
