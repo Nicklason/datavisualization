@@ -12,12 +12,6 @@ library(ggplot2)
 library(tidyr)
 # shiny app
 library(shiny)
-library(rworldmap)
-library(maps)
-library(geosphere)
-library(data.table)
-library(ggthemes)
-library(plyr)
 # Don't use scientific notation in the plot
 options(scipen = 999)
 
