@@ -5,6 +5,7 @@ library(arrow)
 # Read CSV file
 library(readr)
 # Functions to work with dataframes
+library(plyr)
 library(dplyr)
 # Create plots
 library(ggplot2)
@@ -17,10 +18,8 @@ options(scipen = 999)
 # Arrow points for ploting in the map
 library(maps)
 library(geosphere)
-library(dplyr)
 library(ggplot2)
 library(rworldmap)
-library(plyr)
 library(data.table)
 library(ggthemes)
 
@@ -93,20 +92,18 @@ server <- function(input, output) {
     # Add plot from airport to destination
     ggplot() +
       geom_polygon(data = mapworld_df,
-                   aes(X, Y,
-                       group = location_id,),
+                   aes(long, lat,
+                       group = group),
                    fill = "gray30") +
-      geom_segment(data = OD,
-                   aes(x = longitude.x,
-                       y = latitude.x,
-                       xend = longitude.y,
-                       yend = latitude.y,
-                       color = freq),
+      geom_segment(data = taxi_data,
+                   aes(x = PULocationID,
+                       y = DOLocationID,
+                       xend = DOLocationID,
+                       yend = PULocationID,
+                       color = "red"), 
                    arrow = arrow(length = unit(0.01, "npc"))) +
-      scale_colour_distiller(palette = "Reds",
-                             name = "Frequency",
-                             guide = "colorbar") +
       coord_equal()
+
   })
 }
 
