@@ -89,7 +89,7 @@ server <- function(input, output) {
         na.value = "grey50",
         trans = "log10"
       )
-    # Add plot from airport to destination
+    # Add plot from pickup to destination
     ggplot() +
       geom_polygon(data = mapworld_df,
                    aes(long, lat,
