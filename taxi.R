@@ -14,7 +14,7 @@ library(tidyr)
 library(shiny)
 # Don't use scientific notation in the plot
 options(scipen = 999)
-# Arrow points for plot labels
+# Arrow points for ploting in the map
 library(maps)
 library(geosphere)
 library(dplyr)
@@ -90,6 +90,23 @@ server <- function(input, output) {
         na.value = "grey50",
         trans = "log10"
       )
+    # Add plot from airport to destination
+    ggplot() +
+      geom_polygon(data = mapworld_df,
+                   aes(X, Y,
+                       group = location_id,),
+                   fill = "gray30") +
+      geom_segment(data = OD,
+                   aes(x = longitude.x,
+                       y = latitude.x,
+                       xend = longitude.y,
+                       yend = latitude.y,
+                       color = freq),
+                   arrow = arrow(length = unit(0.01, "npc"))) +
+      scale_colour_distiller(palette = "Reds",
+                             name = "Frequency",
+                             guide = "colorbar") +
+      coord_equal()
   })
 }
 
