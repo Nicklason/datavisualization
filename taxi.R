@@ -14,6 +14,18 @@ library(tidyr)
 library(shiny)
 # Don't use scientific notation in the plot
 options(scipen = 999)
+# Arrow points for plot labels
+library(maps)
+library(geosphere)
+library(dplyr)
+library(ggplot2)
+library(rworldmap)
+library(plyr)
+library(data.table)
+library(ggthemes)
+
+worldMap <- getMap() # nolint
+mapworld_df <- fortify(worldMap)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
