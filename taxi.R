@@ -39,7 +39,7 @@ ui <- fluidPage(
       # Add any input controls if needed
     ),
     mainPanel(
-      plotOutput("taxiPlot")
+      plotlyOutput("taxiPlot")
     )
   )
 )
