@@ -96,7 +96,7 @@ server <- function(input, output) {
                        group = location_id),
                    fill = "gray30") +
       geom_segment(data = centroids,
-                   aes(x = -73.7865,
+                   aes(x = -73.7865, # location is JFK airport
                        y = 40.647,
                        xend = X,
                        yend = Y,
