@@ -93,7 +93,7 @@ server <- function(input, output) {
     ggplot() +
       geom_polygon(data = centroids,
                    aes(X, Y,
-                       group = group),
+                       group = zone),
                    fill = "gray30") +
       geom_segment(data = taxi_data,
                    aes(x = PULocationID,
