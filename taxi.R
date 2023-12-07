@@ -91,8 +91,8 @@ server <- function(input, output) {
       )
     # Add plot from pickup to destination
     ggplot() +
-      geom_polygon(data = taxi_shp,
-                   aes(shape_area, shape_leng,
+      geom_polygon(data = centroids,
+                   aes(X, Y,
                        group = location_id),
                    fill = "gray30") +
       geom_segment(data = centroids,
