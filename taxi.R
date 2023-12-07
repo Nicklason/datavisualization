@@ -91,15 +91,15 @@ server <- function(input, output) {
       )
     # Add plot from pickup to destination
     ggplot() +
-      geom_polygon(data = centroids,
-                   aes(X, Y,
-                       group = zone),
+      geom_polygon(data = taxi_shp,
+                   aes(shape_area, shape_leng,
+                       group = location_id),
                    fill = "gray30") +
-      geom_segment(data = taxi_data,
-                   aes(x = PULocationID,
-                       y = DOLocationID,
-                       xend = DOLocationID,
-                       yend = PULocationID,
+      geom_segment(data = centroids,
+                   aes(x = -73.7865,
+                       y = 40.647,
+                       xend = X,
+                       yend = Y,
                        color = "red"), 
                    arrow = arrow(length = unit(0.01, "npc"))) +
       coord_equal()
