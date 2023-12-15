@@ -50,7 +50,17 @@ ui <- navbarPage("My Application",
        )
      )
     )),
-    tabPanel("Frequency of each fare"),
+    tabPanel("Taxi rides plot", fluidPage(
+      titlePanel("Taxi rides map"),
+      sidebarLayout(
+        sidebarPanel(
+          
+        ),
+        mainPanel(
+          plotlyOutput("ridePlot")
+        )
+      )
+    )),
     tabPanel("Amount of trips")
 )
 # add datetime variable
@@ -110,6 +120,7 @@ server <- function(input, output) {
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
   })
+  
 }
 
 # Run the application 
