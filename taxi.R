@@ -93,10 +93,11 @@ server <- function(input, output) {
     
     
     # create date time variable 
-    taxi_data$datetime <- as.POSIXct(paste0("2016-09-23 ", taxi_data$time), tz = "GMT")
+    taxi_data$datetime <- as.POSIXct(paste0("2016-09-23 ", taxi_data$tpep_pickup_datetime), tz = "GMT")
     # plot to filter based on timestamp and zone
-    k <- ggplot()+
-      geom_sf(data = taxi_data)
+    k <- ggplot(taxi_data, aes(x = datetime, y = PULocationID)) +
+      geom_point() +
+      scale_x_datetime(date_labels = "%H:%M", date_breaks = "1 hour")
     ggplotly(k, tooltip = "text", height = 1000)
   })
 }
