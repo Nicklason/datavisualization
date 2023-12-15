@@ -67,6 +67,24 @@ ui <- navbarPage("My Application",
 taxi_data$datetime <- as.POSIXct(taxi_data$tpep_pickup_datetime, format = "%Y-%m-%d %H:%M:%S", tz = "GMT")
 # Define server logic
 server <- function(input, output) {
+  
+  filtered_data <- reactive({
+    switch(
+      input$time_filter,
+      "Hour" = filter(taxi_data, hour(datetime) == input$hour_slider),
+      "Week" = filter(taxi_data, week(datetime) == input$week_slider),
+      "Month" = filter(taxi_data, month(datetime) == input$month_slider)
+    ) %>%
+      filter(PULocationID == input$zone_filter)
+  })
+  
+  filtered_data_aggregated <- reactive({
+    filtered_data() %>%
+      group_by(DOLocationID, PULocationID) %>%
+      summarize(rides = sum(!is.na(PULocationID)), .groups = 'drop') %>%
+      mutate_at(c('rides'), ~replace_na(., 0))
+  })
+  
   output$taxiPlot <- renderPlotly({
     # Calculate the total amount of money spent in each location
     total <- merge(
@@ -108,35 +126,17 @@ server <- function(input, output) {
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
   })
+  
   output$ridePlot <- renderPlotly({
     # Filter data based on time
-    filtered_data <- switch(
-      input$time_filter,
-      "Hour" = filter(taxi_data, hour(datetime) == input$hour_slider),
-      "Week" = filter(taxi_data, week(datetime) == input$week_slider),
-      "Month" = filter(taxi_data, month(datetime) == input$month_slider)
-    ) %>%
-      filter(PULocationID == input$zone_filter)
+    filtered_data_df <- filtered_data()
     
-    # get zone names
-    filtered_data <- left_join(filtered_data, taxi_zones, by = c("PULocationID" = "LocationID"))
-    total <- merge(
-      aggregate(filtered_data$PULocationID, by = list(location_id = filtered_data$DOLocationID), FUN = length, na.rm = TRUE),
-      aggregate(filtered_data$PULocationID, by = list(location_id = filtered_data$PULocationID), FUN = length, na.rm = TRUE),
-      by = "location_id",
-      all.x = TRUE,
-      all.y = TRUE
-    ) %>%
-      mutate_at(c('x.x', 'x.y'), ~replace_na(., 0)) %>%
-      mutate(rides = x.x + x.y, x.x = NULL, x.y = NULL) %>%
-      mutate_at(c('location_id'), as.character) %>%
-      left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
+    total <- filtered_data_aggregated() %>%
+      inner_join(taxi_shp %>% select(location_id), by = c('DOLocationID', 'PULocationID')) %>%
+      left_join(taxi_shp, by = c('DOLocationID' = 'location_id'), suffix = c("_DO", "_PU"))
     
     # Exclude missing values before calculating class intervals
-    total <- total[complete.cases(total), ]
-    
-    # Scale rides down to not show scientific notation numbers
-    total$rides_scaled = total$rides / max(total$rides)
+    total <- total[complete.cases(total$rides_scaled), ]
     
     # Create 7 intervals for the number of rides
     breaks_qt <- classIntervals(c(0, total$rides_scaled), n = 7, style = "quantile")
@@ -153,7 +153,7 @@ server <- function(input, output) {
     
     # Create plot
     p <- ggplot() +
-      geom_sf(data = total, aes(group = location_id, fill = rides_cat, text = label), color = "white") +
+      geom_sf(data = total, aes(group = location_id, fill = rides_cat), color = "white") +
       scale_colour_distiller(palette="Blues", name="Frequency", guide = "colorbar") +
       coord_sf() +
       theme_void() +
@@ -162,6 +162,7 @@ server <- function(input, output) {
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
   })
+  
   
 }
 
