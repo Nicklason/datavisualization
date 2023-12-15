@@ -90,6 +90,11 @@ server <- function(input, output) {
 
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
+    
+    # plot to filter based on timestamp and zone
+    k <- ggplot()+
+      geom_sf(data = taxi_data)
+    ggplotly(k, tooltip = "text", height = 1000)
   })
 }
 
