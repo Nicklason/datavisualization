@@ -91,6 +91,9 @@ server <- function(input, output) {
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
     
+    
+    # create date time variable 
+    taxi_data$datetime <- as.POSIXct(paste0("2016-09-23 ", taxi_data$time), tz = "GMT")
     # plot to filter based on timestamp and zone
     k <- ggplot()+
       geom_sf(data = taxi_data)
