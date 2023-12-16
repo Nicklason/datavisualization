@@ -68,7 +68,7 @@ taxi_data$datetime <- as.POSIXct(taxi_data$tpep_pickup_datetime, format = "%Y-%m
 # Define server logic
 server <- function(input, output) {
   
-  filtered_data <- reactive({
+  filtered_data_df <- reactive({
     switch(
       input$time_filter,
       "Hour" = filter(taxi_data, hour(datetime) == input$hour_slider),
@@ -76,13 +76,6 @@ server <- function(input, output) {
       "Month" = filter(taxi_data, month(datetime) == input$month_slider)
     ) %>%
       filter(PULocationID == input$zone_filter)
-  })
-  
-  filtered_data_aggregated <- reactive({
-    filtered_data() %>%
-      group_by(DOLocationID, PULocationID) %>%
-      summarize(rides = sum(!is.na(PULocationID)), .groups = 'drop') %>%
-      mutate_at(c('rides'), ~replace_na(., 0))
   })
   
   output$taxiPlot <- renderPlotly({
@@ -128,41 +121,46 @@ server <- function(input, output) {
   })
   
   output$ridePlot <- renderPlotly({
-    # Filter data based on time
-    filtered_data_df <- filtered_data()
     
-    total <- filtered_data_aggregated() %>%
-      inner_join(taxi_shp %>% select(location_id), by = c('DOLocationID', 'PULocationID')) %>%
-      left_join(taxi_shp, by = c('DOLocationID' = 'location_id'), suffix = c("_DO", "_PU"))
+    total <- merge(
+      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$DOLocationID), FUN = sum),
+      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$PULocationID), FUN = sum),
+      by = "location_id",
+      all.x = TRUE,
+      all.y = TRUE
+    ) %>%
+      mutate_at(c('x.x', 'x.y'), ~replace_na(., 0)) %>%
+      mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
+      mutate_at(c('location_id'), as.character) %>%
+      left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
     
-    # Exclude missing values before calculating class intervals
-    total <- total[complete.cases(total$rides_scaled), ]
+    # Scale money down to not show scientific notation numbers
+    total$money_scaled = total$money / 100000
     
-    # Create 7 intervals for the number of rides
-    breaks_qt <- classIntervals(c(0, total$rides_scaled), n = 7, style = "quantile")
+    # Create 7 intervals for the monies
+    breaks_qt <- classIntervals(c(0, total$money_scaled), n = 7, style = "quantile")
     
     # Use the intervals
-    total <- mutate(total, rides_cat = cut(rides_scaled, breaks_qt$brks))
+    total <- mutate(total, money_cat = cut(money_scaled, breaks_qt$brks))
     
     # Add label to each row
     total <- total %>%
       mutate(
         model = rownames(.),
-        label = glue::glue('{zone} \nNumber of rides: {rides}' )
+        label = glue::glue('{zone} \nMoney spent: ${money}')
       )
     
     # Create plot
     p <- ggplot() +
-      geom_sf(data = total, aes(group = location_id, fill = rides_cat), color = "white") +
-      scale_colour_distiller(palette="Blues", name="Frequency", guide = "colorbar") +
+      geom_sf(data = total, aes(group = location_id, fill = money_cat, text = label), color = "white") +
+      scale_colour_distiller(palette = "Reds", name = "Frequency", guide = "colorbar") +
       coord_sf() +
       theme_void() +
-      scale_fill_brewer(palette = "Blues")
+      scale_fill_brewer(palette = "OrRd")
     
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
   })
-  
   
 }
 
