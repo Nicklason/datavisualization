@@ -106,8 +106,6 @@ server <- function(input, output) {
       inner_join(totalAmountByZone, by = c("location_id" = "location_id")) %>%
       # Join simple feature from shape
       inner_join(taxi_shp, by = c("location_id" = "location_id"))
-
-    View(grouped)
         
     # For some reason I have to specify geometry = geometry
     ggplot() +
