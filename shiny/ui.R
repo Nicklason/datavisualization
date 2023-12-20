@@ -35,5 +35,5 @@ ui <- navbarPage("My Application",
         plotOutput("taxiTripsByWeekday")
       )
     )
-  )),
+  ))
 )
