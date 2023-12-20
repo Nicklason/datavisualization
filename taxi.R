@@ -44,7 +44,19 @@ ui <- navbarPage("My Application",
       )
     )
   )),
-  tabPanel("Component 2"),
+  tabPanel("Taxi trips by zone", fluidPage(
+    titlePanel("Taxi trips by zone"),
+    sidebarLayout(
+      sidebarPanel(
+        selectInput(inputId = "pickOrDrop",
+                    label = "Choose location type:",
+                    choices = c("Pick up", "Drop off"))
+      ),
+      mainPanel(
+        plotOutput("taxiTripsByZone")
+      )
+    )
+  )),
   tabPanel("Component 3")
 )
 
@@ -90,6 +102,32 @@ server <- function(input, output) {
 
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
+  })
+  
+  locationID <- reactive({
+    switch(input$pickOrDrop,
+           "Pick up" = "PULocationID",
+           "Drop off" = "DOLocationID")
+  })
+  
+  output$taxiTripsByZone <- renderPlot({
+    # Extract the current value of the reactive locationID
+    current_location <- locationID()
+    
+    # Convert the table object into a list
+    grouped <- taxi_data %>%
+      group_by(!!sym(current_location)) %>%
+      summarise(count = n()) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      left_join(taxi_shp, by = setNames("location_id", current_location)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location))
+    
+    # For some reason I have to specify geometry = geometry
+    ggplot() +
+      geom_sf(data = grouped, aes(group = location_id, fill = count, geometry = geometry), color = "white") +
+      scale_fill_distiller(palette = "OrRd", name = "Frequency", trans = "reverse") +
+      coord_sf() +
+      theme_void()
   })
 }
 
