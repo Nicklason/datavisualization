@@ -31,36 +31,6 @@ centroids <- taxi_shp %>%
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
 
-  # Define UI for application
-ui <- navbarPage("My Application",
-  tabPanel("Taxi Fares Map", fluidPage(
-    titlePanel("Taxi Fares Map"),
-    sidebarLayout(
-      sidebarPanel(
-        # Add any input controls if needed
-      ),
-      mainPanel(
-        plotlyOutput("taxiPlot")
-      )
-    )
-  )),
-  tabPanel("Taxi trips by zone", fluidPage(
-    titlePanel("Taxi trips by zone"),
-    sidebarLayout(
-      sidebarPanel(
-        selectInput(inputId = "pickOrDrop",
-                    label = "Choose location type:",
-                    choices = c("Pick up", "Drop off"))
-      ),
-      mainPanel(
-        plotOutput("taxiTripsByZone")
-      )
-    )
-  )),
-  tabPanel("Component 3")
-)
-
-# Define server logic
 server <- function(input, output) {
   output$taxiPlot <- renderPlotly({
     # Calculate the total amount of money spent in each location
@@ -130,6 +100,3 @@ server <- function(input, output) {
       theme_void()
   })
 }
-
-# Run the application 
-shinyApp(ui = ui, server = server)
