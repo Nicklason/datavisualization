@@ -126,4 +126,30 @@ server <- function(input, output) {
       scale_x_continuous(breaks = seq(0, 23, by = 1)) +
       scale_color_discrete(name = "Weekday")
   })
+  output$TaxiTripsByPayment <- renderPlot({
+    
+    # Extract the current value of the reactive locationID
+    current_location <- locationID()
+    
+    # Group by payment type and location
+    tripsByPaymentType <- taxi_data %>%
+      group_by(payment_type, !!sym(current_location)) %>%
+      summarise(trips = n()) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location)) %>%
+      distinct()  # Address many-to-many relationship warning
+    
+    # Join simple feature from shape
+    grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
+    
+    ggplot() +
+      geom_sf(data = grouped, aes(group = location_id, fill = factor(payment_type), geometry = geometry), color = "white") +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
+      theme_void()
+  })
+  
+  
+  
+  
+  
 }
