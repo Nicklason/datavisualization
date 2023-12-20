@@ -142,14 +142,27 @@ server <- function(input, output) {
     # Join simple feature from shape
     grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
     
-    ggplot() +
+    # Plot for most common payment type at each location
+    plot_location <- ggplot() +
       geom_sf(data = grouped, aes(group = location_id, fill = factor(payment_type), geometry = geometry), color = "white") +
       scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
-      theme_void()
+      theme_void() +
+      ggtitle("Most Common Payment Type at Each Location")
+    
+    # Overall total
+    total_by_payment <- taxi_data %>%
+      group_by(payment_type) %>%
+      summarise(total_trips = n())
+    
+    # Plot for overall total
+    plot_total <- ggplot(total_by_payment, aes(x = factor(payment_type), y = total_trips, fill = factor(payment_type))) +
+      geom_bar(stat = "identity") +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
+      theme_minimal() +
+      ggtitle("Overall Total Trips by Payment Type")
+    
+    # Arrange the two plots
+    library(gridExtra)
+    grid.arrange(plot_location, plot_total, ncol = 2)
   })
-  
-  
-  
-  
-  
 }
