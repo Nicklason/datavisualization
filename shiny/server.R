@@ -81,18 +81,31 @@ server <- function(input, output) {
   output$taxiTripsByZone <- renderPlot({
     # Extract the current value of the reactive locationID
     current_location <- locationID()
-    
+
     # Convert the table object into a list
-    grouped <- taxi_data %>%
+    tripsByZone <- taxi_data %>%
       group_by(!!sym(current_location)) %>%
-      summarise(count = n()) %>%
+      summarise(trips = n()) %>%
       mutate(across(all_of(current_location), as.character)) %>%
-      left_join(taxi_shp, by = setNames("location_id", current_location)) %>%
       rename_with(~ "location_id", .cols = all_of(current_location))
     
+    totalAmountByZone <- taxi_data %>%
+      group_by(!!sym(current_location)) %>%
+      summarise(money = sum(total_amount)) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location))
+
+    grouped <- tripsByZone %>%
+      # Join amount of trips by zone
+      inner_join(totalAmountByZone, by = c("location_id" = "location_id")) %>%
+      # Join simple feature from shape
+      inner_join(taxi_shp, by = c("location_id" = "location_id"))
+
+    View(grouped)
+        
     # For some reason I have to specify geometry = geometry
     ggplot() +
-      geom_sf(data = grouped, aes(group = location_id, fill = count, geometry = geometry), color = "white") +
+      geom_sf(data = grouped, aes(group = location_id, fill = trips, geometry = geometry), color = "white") +
       scale_fill_distiller(palette = "OrRd", name = "Frequency", trans = "reverse") +
       coord_sf() +
       theme_void()
