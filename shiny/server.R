@@ -10,8 +10,6 @@ library(dplyr)
 library(ggplot2)
 # replace_na function
 library(tidyr)
-# shiny app
-library(shiny)
 # interactive ggplot
 library(plotly)
 # create intervals
@@ -31,24 +29,6 @@ centroids <- taxi_shp %>%
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
 
-  # Define UI for application
-ui <- navbarPage("My Application",
-  tabPanel("Taxi Fares Map", fluidPage(
-    titlePanel("Taxi Fares Map"),
-    sidebarLayout(
-      sidebarPanel(
-        # Add any input controls if needed
-      ),
-      mainPanel(
-        plotlyOutput("taxiPlot")
-      )
-    )
-  )),
-  tabPanel("Component 2"),
-  tabPanel("Component 3")
-)
-
-# Define server logic
 server <- function(input, output) {
   output$taxiPlot <- renderPlotly({
     # Calculate the total amount of money spent in each location
@@ -92,6 +72,3 @@ server <- function(input, output) {
     ggplotly(p, tooltip = "text", height = 1000)
   })
 }
-
-# Run the application 
-shinyApp(ui = ui, server = server)
