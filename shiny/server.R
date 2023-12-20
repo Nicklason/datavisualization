@@ -16,6 +16,8 @@ library(plotly)
 library(classInt)
 # string templating
 library(glue)
+# dates
+library(lubridate)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -28,6 +30,10 @@ taxi_zones <- read_csv("https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lo
 centroids <- taxi_shp %>% 
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
+
+# Extract hour and weekday information
+taxi_data$pickup_hour <- hour(taxi_data$tpep_pickup_datetime)
+taxi_data$pickup_weekday <- wday(taxi_data$tpep_pickup_datetime, label = TRUE)
 
 server <- function(input, output) {
   output$taxiPlot <- renderPlotly({
@@ -70,5 +76,54 @@ server <- function(input, output) {
 
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
+  })
+  
+  locationID <- reactive({
+    switch(input$pickOrDrop,
+           "Pick up" = "PULocationID",
+           "Drop off" = "DOLocationID")
+  })
+  
+  output$taxiTripsByZone <- renderPlot({
+    # Extract the current value of the reactive locationID
+    current_location <- locationID()
+
+    # Convert the table object into a list
+    tripsByZone <- taxi_data %>%
+      group_by(!!sym(current_location)) %>%
+      summarise(trips = n()) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location))
+    
+    totalAmountByZone <- taxi_data %>%
+      group_by(!!sym(current_location)) %>%
+      summarise(money = sum(total_amount)) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location))
+
+    grouped <- tripsByZone %>%
+      # Join amount of trips by zone
+      inner_join(totalAmountByZone, by = c("location_id" = "location_id")) %>%
+      # Join simple feature from shape
+      inner_join(taxi_shp, by = c("location_id" = "location_id"))
+        
+    # For some reason I have to specify geometry = geometry
+    ggplot() +
+      geom_sf(data = grouped, aes(group = location_id, fill = trips, geometry = geometry), color = "white") +
+      scale_fill_distiller(palette = "OrRd", name = "Frequency", trans = "reverse") +
+      coord_sf() +
+      theme_void()
+  })
+
+  output$taxiTripsByWeekday <- renderPlot({
+    passengers <- taxi_data %>%
+      group_by(pickup_weekday, pickup_hour) %>%
+      summarise(trips = n())
+
+    ggplot(passengers, aes(x = pickup_hour, y = trips, group = pickup_weekday, color = pickup_weekday)) +
+      geom_line() +
+      labs(x = "Hour of Day", y = "Total trips", title = "Trip Count by Weekday and Hour") +
+      scale_x_continuous(breaks = seq(0, 23, by = 1)) +
+      scale_color_discrete(name = "Weekday")
   })
 }
