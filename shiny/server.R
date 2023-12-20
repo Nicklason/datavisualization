@@ -10,8 +10,6 @@ library(dplyr)
 library(ggplot2)
 # replace_na function
 library(tidyr)
-# shiny app
-library(shiny)
 # interactive ggplot
 library(plotly)
 # create intervals
