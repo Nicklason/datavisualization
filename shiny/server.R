@@ -16,6 +16,8 @@ library(plotly)
 library(classInt)
 # string templating
 library(glue)
+# dates
+library(lubridate)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -28,6 +30,10 @@ taxi_zones <- read_csv("https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lo
 centroids <- taxi_shp %>% 
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
+
+# Extract hour and weekday information
+taxi_data$pickup_hour <- hour(taxi_data$tpep_pickup_datetime)
+taxi_data$pickup_weekday <- wday(taxi_data$tpep_pickup_datetime, label = TRUE)
 
 server <- function(input, output) {
   output$taxiPlot <- renderPlotly({
@@ -109,5 +115,17 @@ server <- function(input, output) {
       scale_fill_distiller(palette = "OrRd", name = "Frequency", trans = "reverse") +
       coord_sf() +
       theme_void()
+  })
+
+  output$taxiTripsByWeekday <- renderPlot({
+    passengers <- taxi_data %>%
+      group_by(pickup_weekday, pickup_hour) %>%
+      summarise(trips = n())
+
+    ggplot(passengers, aes(x = pickup_hour, y = trips, group = pickup_weekday, color = pickup_weekday)) +
+      geom_line() +
+      labs(x = "Hour of Day", y = "Total trips", title = "Trip Count by Weekday and Hour") +
+      scale_x_continuous(breaks = seq(0, 23, by = 1)) +
+      scale_color_discrete(name = "Weekday")
   })
 }

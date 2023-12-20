@@ -27,5 +27,13 @@ ui <- navbarPage("My Application",
       )
     )
   )),
-  tabPanel("Component 3")
+  tabPanel("Trip Count by Weekday and Hour", fluidPage(
+    titlePanel("Trip Count by Weekday and Hour"),
+    sidebarLayout(
+      sidebarPanel(),
+      mainPanel(
+        plotOutput("taxiTripsByWeekday")
+      )
+    )
+  )),
 )
