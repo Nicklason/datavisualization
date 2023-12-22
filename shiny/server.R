@@ -133,8 +133,12 @@ server <- function(input, output) {
     # Extract the current value of the reactive locationID
     current_location <- locationID()
     
+    # Filter only relevant payment types (adjust the values as needed)
+    relevant_payment_types <- c("1", "2")
+    taxi_data_filtered <- taxi_data %>% filter(payment_type %in% relevant_payment_types)
+    
     # Group by payment type and location
-    tripsByPaymentType <- taxi_data %>%
+    tripsByPaymentType <- taxi_data_filtered %>%
       group_by(payment_type, !!sym(current_location)) %>%
       summarise(trips = n()) %>%
       mutate(across(all_of(current_location), as.character)) %>%
@@ -145,14 +149,14 @@ server <- function(input, output) {
     grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
     
     # Plot for most common payment type at each location
-    plot_location <- ggplot() +
-      geom_sf(data = grouped, aes(group = location_id, fill = factor(payment_type), geometry = geometry), color = "white") +
+    plot_location <- ggplot(grouped, aes(group = location_id, fill = factor(payment_type), geometry = geometry)) +
+      geom_sf(color = "white") +
       scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
       theme_void() +
       ggtitle("Most Common Payment Type at Each Location")
     
     # Overall total
-    total_by_payment <- taxi_data %>%
+    total_by_payment <- taxi_data_filtered %>%
       group_by(payment_type) %>%
       summarise(total_trips = n())
     
@@ -166,4 +170,5 @@ server <- function(input, output) {
     # Arrange the two plots
     grid.arrange(plot_location, plot_total, ncol = 2)
   })
+  
 }
