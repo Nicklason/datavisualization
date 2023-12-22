@@ -18,6 +18,8 @@ library(classInt)
 library(glue)
 # dates
 library(lubridate)
+# arrange multiple plots (and other things too?) in a grid
+library(gridExtra)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -162,7 +164,6 @@ server <- function(input, output) {
       ggtitle("Overall Total Trips by Payment Type")
     
     # Arrange the two plots
-    library(gridExtra)
     grid.arrange(plot_location, plot_total, ncol = 2)
   })
 }
