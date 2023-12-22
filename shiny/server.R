@@ -24,16 +24,23 @@ taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?meth
 # Read the parquet file
 taxi_data <- read_parquet('https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2023-01.parquet') # nolint
 # Read the taxi zone lookup file
-taxi_zones <- read_csv("https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lookup.csv") # nolint
+taxi_zones <- read_csv("https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lookup.csv") %>% # nolint
+  mutate(across("LocationID", as.integer))
+
+# Extract hour and weekday information
+taxi_data$pickup_hour <- hour(taxi_data$tpep_pickup_datetime)
+taxi_data$pickup_weekday <- wday(taxi_data$tpep_pickup_datetime, label = TRUE)
+
+airport_location_ids <- c(1, 132, 138)
+
+# Filter dataset to only include trips to/from airports
+taxi_data_airports <- taxi_data %>%
+  filter(PULocationID %in% airport_location_ids | DOLocationID %in% airport_location_ids)
 
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
-
-# Extract hour and weekday information
-taxi_data$pickup_hour <- hour(taxi_data$tpep_pickup_datetime)
-taxi_data$pickup_weekday <- wday(taxi_data$tpep_pickup_datetime, label = TRUE)
 
 server <- function(input, output) {
   output$taxiPlot <- renderPlotly({
@@ -131,5 +138,47 @@ server <- function(input, output) {
       annotate(geom = "text", x = 7, y = 0, label = "Weekend bottom", color = "red") +
       geom_vline(xintercept = 19) +
       annotate(geom = "text", x = 20, y = 38000, label = "Workday peak", color = "red")
+  })
+
+  output$taxiTripsAirports <- renderPlotly({
+    p <- ggplot() +
+      geom_sf(data = taxi_shp, aes(group = objectid), color = "white") +
+      coord_sf() +
+      theme_void()
+
+    if (isTruthy(input$locations)) {
+      trips <- taxi_data_airports %>%
+        filter(PULocationID %in% airport_location_ids)
+
+      airportTrips <- trips %>%
+        filter(PULocationID != DOLocationID & (DOLocationID %in% input$locations | PULocationID %in% input$locations)) %>%
+        mutate(across(PULocationID, as.character)) %>%
+        mutate(across(DOLocationID, as.character)) %>%
+        group_by(PULocationID, DOLocationID) %>%
+        summarise(trips = n()) %>%
+        filter(trips >= input$minMaxTrips[1] & trips <= input$minMaxTrips[2])
+
+      arrows <- airportTrips %>%
+        inner_join(centroids, by = c("PULocationID" = "location_id"), suffix = c("", "PU")) %>%
+        inner_join(centroids, by = c("DOLocationID" = "location_id"), suffix = c("PU", "DO"))
+
+      p <- p +
+        geom_segment(
+          data = arrows,
+          aes(
+            x = XPU,
+            y = YPU,
+            xend = XDO,
+            yend = YDO,
+            color = trips
+          ),
+          size = 0.4,
+          alpha = 0.5,
+          arrow = arrow(length = unit(0.01, "npc")),
+          default_crs = sf::st_crs(4326)
+        )
+    }
+
+    ggplotly(p, height = 1000)
   })
 }
