@@ -124,6 +124,12 @@ server <- function(input, output) {
       geom_line() +
       labs(x = "Hour of Day", y = "Total trips", title = "Trip Count by Weekday and Hour") +
       scale_x_continuous(breaks = seq(0, 23, by = 1)) +
-      scale_color_discrete(name = "Weekday")
+      scale_color_discrete(name = "Weekday") +
+      geom_vline(xintercept = 0) +
+      annotate(geom = "text", x = 1, y = 28000, label = "Weekend peak", color = "red") +
+      geom_vline(xintercept = 6) + 
+      annotate(geom = "text", x = 7, y = 0, label = "Weekend bottom", color = "red") +
+      geom_vline(xintercept = 19) +
+      annotate(geom = "text", x = 20, y = 38000, label = "Workday peak", color = "red")
   })
 }
