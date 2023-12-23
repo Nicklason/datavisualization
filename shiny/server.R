@@ -220,7 +220,8 @@ server <- function(input, output) {
 
     ggplot() +
       geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2) +
-      geom_point(brushed, mapping = aes(x = trip_distance, y = trip_speed, color = LocationID), size=0.2)
+      geom_point(brushed, mapping = aes(x = trip_distance, y = trip_speed, color = LocationID), size=0.2) +
+      theme(legend.position="none")
   })
 
   output$speedAndDistancePie <- renderPlot({
