@@ -47,6 +47,17 @@ ui <- navbarPage("My Application",
       )
     )
   )),
+  tabPanel("Payment type distribution of taxi fares", fluidPage(
+    titlePanel("Taxi fares distribution by type"),
+    sidebarLayout(
+      sidebarPanel(
+        
+      ),
+      mainPanel(
+        plotOutput("TaxiTripsByPayment")
+      )
+    )
+  )),
   tabPanel("Taxi trips to and from airports", fluidPage(
     titlePanel("Taxi trips to and from airports"),
     sidebarLayout(
