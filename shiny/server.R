@@ -191,7 +191,13 @@ server <- function(input, output) {
 
   output$speedAndDistance <- renderPlot({
     stuff <- trip_time_distance_speed %>%
-      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed)) %>%
+      filter(
+        trip_distance >= input$xRangeDistanceAndSpeed[1] &
+        trip_distance <= input$xRangeDistanceAndSpeed[2] &
+        trip_speed >= input$yRangeDistanceAndSpeed[1] &
+        trip_speed <= input$yRangeDistanceAndSpeed[2]
+      )
 
     ggplot() +
       geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2)

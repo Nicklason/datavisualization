@@ -59,14 +59,16 @@ ui <- navbarPage("My Application",
       )
     )
   )),
-  tabPanel("Speed and distance clustering", fluidPage(
-    titlePanel("Speed and distance clustering"),
+  tabPanel("Speed and distance", fluidPage(
+    titlePanel("Speed and distance"),
     sidebarLayout(
       sidebarPanel(
         selectInput("locationsDistanceAndSpeed", "Select locations", choices = zones, multiple = TRUE),
         selectInput(inputId = "pickOrDropDistanceAndSpeed",
                     label = "Choose location type:",
-                    choices = pickupOrDropoff)
+                    choices = pickupOrDropoff),
+        sliderInput("xRangeDistanceAndSpeed", "Select x axis range:", min = 0, max = 300, value = c(0, 300), step = 0.1),
+        sliderInput("yRangeDistanceAndSpeed", "Select y axis range:", min = 0, max = 200, value = c(0, 200))
       ),
       mainPanel(
         fluidRow(
