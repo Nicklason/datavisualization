@@ -37,6 +37,13 @@ airport_location_ids <- c(1, 132, 138)
 taxi_data_airports <- taxi_data %>%
   filter(PULocationID %in% airport_location_ids | DOLocationID %in% airport_location_ids)
 
+trip_time <- as.numeric(difftime(taxi_data$tpep_dropoff_datetime, taxi_data$tpep_pickup_datetime, units = "hours"))
+trip_distance <- taxi_data$trip_distance * 1.609344
+trip_speed <- trip_distance / trip_time
+
+trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID) %>%
+  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130)
+
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
   st_centroid() %>% 
@@ -180,5 +187,49 @@ server <- function(input, output) {
     }
 
     ggplotly(p, height = 1000)
+  })
+
+  output$speedAndDistance <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    ggplot() +
+      geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2)
+  })
+
+  output$speedAndDistancePie <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    filtered <- brushedPoints(stuff, input$speedAndDistanceBrush)
+
+    if (nrow(filtered) > 0) {
+      # calculate percentages of groups of locations (pu or do)
+
+      if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+        filtered <- filtered %>%
+          rename(LocationID = PULocationID)
+      } else {
+        filtered <- filtered %>%
+          rename(LocationID = DOLocationID)
+      }
+
+      result <- filtered %>%
+        group_by(LocationID) %>%
+        summarise(count = n()) %>%
+        mutate(percentage = count / sum(count) * 100)
+
+      ggplot(result, aes(x="", y=count, fill=LocationID)) +
+        geom_bar(stat="identity", width=1) +
+        coord_polar("y", start=0)
+    }
+  })
+
+  output$speedAndDistanceTable <- renderDataTable({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    brushedPoints(stuff, input$speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
   })
 }

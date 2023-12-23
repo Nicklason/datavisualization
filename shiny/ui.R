@@ -9,6 +9,8 @@ taxi_zones <- read_csv("https://d37ci6vzurychx.cloudfront.net/misc/taxi+_zone_lo
 zones <- taxi_zones$LocationID
 names(zones) <- taxi_zones$Zone
 
+pickupOrDropoff <- c("PULocationID", "DOLocationID")
+names(pickupOrDropoff) <- c("Pick up", "Drop off")
 
 # Define UI for application
 ui <- navbarPage("My Application",
@@ -54,6 +56,23 @@ ui <- navbarPage("My Application",
       ),
       mainPanel(
         plotlyOutput("taxiTripsAirports")
+      )
+    )
+  )),
+  tabPanel("Speed and distance clustering", fluidPage(
+    titlePanel("Speed and distance clustering"),
+    sidebarLayout(
+      sidebarPanel(
+        selectInput("locationsDistanceAndSpeed", "Select locations", choices = zones, multiple = TRUE),
+        selectInput(inputId = "pickOrDropDistanceAndSpeed",
+                    label = "Choose location type:",
+                    choices = pickupOrDropoff)
+      ),
+      mainPanel(
+        fluidRow(
+          splitLayout(cellWidths = c("50%", "50%"), plotOutput("speedAndDistance", brush = "speedAndDistanceBrush"), plotOutput("speedAndDistancePie"))
+        ),
+        dataTableOutput("speedAndDistanceTable")
       )
     )
   ))
