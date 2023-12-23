@@ -188,6 +188,13 @@ server <- function(input, output) {
     ggplotly(p, height = 1000)
   })
 
+  speedAndDistanceBrush <- NULL
+  makeReactiveBinding("speedAndDistanceBrush")
+
+  observeEvent(input$speedAndDistanceBrush, {
+    speedAndDistanceBrush <<- input$speedAndDistanceBrush
+  })
+
   output$speedAndDistance <- renderPlot({
     stuff <- trip_time_distance_speed %>%
       filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed)) %>%
@@ -198,15 +205,29 @@ server <- function(input, output) {
         trip_speed <= input$yRangeDistanceAndSpeed[2]
       )
 
+    brushed <- brushedPoints(stuff, speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
+
+    if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+      brushed <- brushed %>%
+        rename(LocationID = PULocationID)
+    } else {
+      brushed <- brushed %>%
+        rename(LocationID = DOLocationID)
+    }
+
+    brushed <- brushed %>% mutate(across(LocationID, as.character))
+
     ggplot() +
-      geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2)
+      geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2) +
+      geom_point(brushed, mapping = aes(x = trip_distance, y = trip_speed, color = LocationID), size=0.2)
   })
 
   output$speedAndDistancePie <- renderPlot({
     stuff <- trip_time_distance_speed %>%
       filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
 
-    filtered <- brushedPoints(stuff, input$speedAndDistanceBrush)
+    filtered <- brushedPoints(stuff, speedAndDistanceBrush)
 
     if (nrow(filtered) > 0) {
       # calculate percentages of groups of locations (pu or do)
@@ -220,13 +241,27 @@ server <- function(input, output) {
       }
 
       result <- filtered %>%
+        mutate(across(LocationID, as.character)) %>%
         group_by(LocationID) %>%
         summarise(count = n()) %>%
         mutate(percentage = count / sum(count) * 100)
 
-      ggplot(result, aes(x="", y=count, fill=LocationID)) +
+      p <- ggplot(result, aes(x="", y=count, fill=LocationID)) +
         geom_bar(stat="identity", width=1) +
         coord_polar("y", start=0)
+
+      # this is cool. you can extract the color from a plot, then sort categories lexicographically because that is how ggplot sorts it
+      # that can then be used to map categories and colors
+      #plot_data <- ggplot_build(p)$data[[1]]  # Extract data used for plotting
+      #category_colors <- plot_data$fill  # Extract fill colors used for categories
+      #unique_categories <- sort(as.character(unique(filtered$LocationID)))  # Get unique categories
+
+      # Map colors to categories
+      #color_map <- data.frame(category = unique_categories, color = category_colors)
+
+      #message(color_map)
+
+      p
     }
   })
 
@@ -234,7 +269,7 @@ server <- function(input, output) {
     stuff <- trip_time_distance_speed %>%
       filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
 
-    brushedPoints(stuff, input$speedAndDistanceBrush) %>%
+    brushedPoints(stuff, speedAndDistanceBrush) %>%
       select(-one_of(input$pickOrDropDistanceAndSpeed))
   })
 

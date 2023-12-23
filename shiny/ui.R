@@ -83,7 +83,17 @@ ui <- navbarPage("My Application",
       ),
       mainPanel(
         fluidRow(
-          splitLayout(cellWidths = c("50%", "50%"), plotOutput("speedAndDistance", brush = "speedAndDistanceBrush"), plotOutput("speedAndDistancePie"))
+          splitLayout(
+            cellWidths = c("50%", "50%"),
+            plotOutput(
+              "speedAndDistance",
+              brush = brushOpts(
+                id = "speedAndDistanceBrush",
+                delay = 5000
+              )
+            ),
+            plotOutput("speedAndDistancePie")
+          )
         ),
         dataTableOutput("speedAndDistanceTable")
       )
