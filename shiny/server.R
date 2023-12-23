@@ -200,15 +200,25 @@ server <- function(input, output) {
       rename_with(~ "location_id", .cols = all_of(current_location)) %>%
       distinct()  # Address many-to-many relationship warning
     
+    # Calculate the total trips for each location
+    total_trips_by_location <- tripsByPaymentType %>%
+      group_by(location_id) %>%
+      summarise(total_trips = sum(trips))
+    
+    # Calculate the percentage of trips for each payment type at each location
+    tripsByPaymentType <- tripsByPaymentType %>%
+      left_join(total_trips_by_location, by = "location_id") %>%
+      mutate(percentage = (trips / total_trips) * 100)
+    
     # Join simple feature from shape
     grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
     
-    # Plot for most common payment type at each location
-    plot_location <- ggplot(grouped, aes(group = location_id, fill = factor(payment_type), geometry = geometry)) +
+    # Plot for most common payment type at each location as a heatmap
+    plot_location <- ggplot(grouped, aes(group = location_id, fill = percentage, geometry = geometry)) +
       geom_sf(color = "white") +
-      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
+      scale_fill_gradient(name = "Percentage", low = "yellow", high = "red") +
       theme_void() +
-      ggtitle("Most Common Payment Type at Each Location")
+      ggtitle("% of Trips by Payment Type at each zone")
     
     # Overall total
     total_by_payment <- taxi_data_filtered %>%
@@ -218,12 +228,13 @@ server <- function(input, output) {
     # Plot for overall total
     plot_total <- ggplot(total_by_payment, aes(x = factor(payment_type), y = total_trips, fill = factor(payment_type))) +
       geom_bar(stat = "identity") +
-      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "red"), labels = c("Credit Card", "Cash")) +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "yellow", "2" = "red"), labels = c("Credit Card", "Cash")) +
       theme_minimal() +
       ggtitle("Overall Total Trips by Payment Type")
     
     # Arrange the two plots
     grid.arrange(plot_location, plot_total, ncol = 2)
   })
+  
   
 }
