@@ -56,15 +56,12 @@ server <- function(input, output) {
     mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
     mutate_at(c('location_id'), as.character) %>%
     left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
-
-    # Scale money down to not show scientific notation numbers
-    total$money_scaled = total$money / 100000
     
     # Create 7 intervals for the monies
-    breaks_qt <- classIntervals(c(0, total$money_scaled), n = 7, style = "quantile")
+    breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
 
     # Use the intervals
-    total <- mutate(total, money_cat = cut(money_scaled, breaks_qt$brks))
+    total <- mutate(total, money_cat = cut(money, breaks_qt$brks))
 
     # Add label to each row
     total <- total %>%
