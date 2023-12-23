@@ -18,6 +18,8 @@ library(classInt)
 library(glue)
 # dates
 library(lubridate)
+# arrange multiple plots (and other things too?) in a grid
+library(gridExtra)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -178,4 +180,58 @@ server <- function(input, output) {
 
     ggplotly(p, height = 1000)
   })
+  output$TaxiTripsByPayment <- renderPlot({
+    
+    # Extract the current value of the reactive locationID
+    current_location <- locationID()
+    
+    # Filter only relevant payment types (adjust the values as needed)
+    relevant_payment_types <- c("1", "2")
+    taxi_data_filtered <- taxi_data %>% filter(payment_type %in% relevant_payment_types)
+    
+    # Group by payment type and location
+    tripsByPaymentType <- taxi_data_filtered %>%
+      group_by(payment_type, !!sym(current_location)) %>%
+      summarise(trips = n()) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location)) %>%
+      distinct()  # Address many-to-many relationship warning
+    
+    # Calculate the total trips for each location
+    total_trips_by_location <- tripsByPaymentType %>%
+      group_by(location_id) %>%
+      summarise(total_trips = sum(trips))
+    
+    # Calculate the percentage of trips for each payment type at each location
+    tripsByPaymentType <- tripsByPaymentType %>%
+      left_join(total_trips_by_location, by = "location_id") %>%
+      mutate(percentage = (trips / total_trips) * 100)
+    
+    # Join simple feature from shape
+    grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
+    
+    # Plot for most common payment type at each location as a heatmap
+    plot_location <- ggplot(grouped, aes(group = location_id, fill = percentage, geometry = geometry)) +
+      geom_sf(color = "white") +
+      scale_fill_gradient(name = "Percentage", low = "blue", high = "orange") +
+      theme_void() +
+      ggtitle("% of Trips by Payment Type at each zone")
+    
+    # Overall total
+    total_by_payment <- taxi_data_filtered %>%
+      group_by(payment_type) %>%
+      summarise(total_trips = n())
+    
+    # Plot for overall total
+    plot_total <- ggplot(total_by_payment, aes(x = factor(payment_type), y = total_trips, fill = factor(payment_type))) +
+      geom_bar(stat = "identity") +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "orange"), labels = c("Credit Card", "Cash")) +
+      theme_minimal() +
+      ggtitle("Overall Total Trips by Payment Type")
+    
+    # Arrange the two plots
+    grid.arrange(plot_location, plot_total, ncol = 2)
+  })
+  
+  
 }
