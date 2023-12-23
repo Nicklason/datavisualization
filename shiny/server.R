@@ -216,7 +216,7 @@ server <- function(input, output) {
     # Plot for most common payment type at each location as a heatmap
     plot_location <- ggplot(grouped, aes(group = location_id, fill = percentage, geometry = geometry)) +
       geom_sf(color = "white") +
-      scale_fill_gradient(name = "Percentage", low = "yellow", high = "red") +
+      scale_fill_gradient(name = "Percentage", low = "blue", high = "orange") +
       theme_void() +
       ggtitle("% of Trips by Payment Type at each zone")
     
@@ -228,7 +228,7 @@ server <- function(input, output) {
     # Plot for overall total
     plot_total <- ggplot(total_by_payment, aes(x = factor(payment_type), y = total_trips, fill = factor(payment_type))) +
       geom_bar(stat = "identity") +
-      scale_fill_manual(name = "Payment_type", values = c("1" = "yellow", "2" = "red"), labels = c("Credit Card", "Cash")) +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "orange"), labels = c("Credit Card", "Cash")) +
       theme_minimal() +
       ggtitle("Overall Total Trips by Payment Type")
     
