@@ -20,6 +20,11 @@ library(glue)
 library(lubridate)
 # arrange multiple plots (and other things too?) in a grid
 library(gridExtra)
+# create animations
+library(gganimate)
+# create gifs
+library(gifski)
+library(tidyverse)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -327,5 +332,78 @@ server <- function(input, output) {
     grid.arrange(plot_location, plot_total, ncol = 2)
   })
   
-  
+  output$totalTripsFromPlacesOverTime <- renderImage({
+    # Get day of month
+    taxi_data$day <- day(taxi_data$tpep_pickup_datetime)
+
+    # Get top 10 places each day
+    data <- taxi_data %>%
+      group_by(day, PULocationID) %>%
+      summarise(count = n()) %>%
+      group_by(PULocationID) %>%
+      mutate(cumulative_count = cumsum(count)) %>%
+      group_by(day) %>%
+      arrange(desc(cumulative_count)) %>%
+      top_n(10, cumulative_count) %>%
+      mutate(name = taxi_zones$Zone[PULocationID]) %>%
+      mutate(rank = rank(-cumulative_count),
+        Count_rel = cumulative_count / cumulative_count[rank==1])
+
+    # Create plot
+    staticplot = ggplot(data, aes(rank, group = name, 
+      fill = as.factor(name), color = as.factor(name))) +
+      geom_tile(aes(y = cumulative_count/2,
+        height = cumulative_count,
+        width = 0.9), alpha = 0.8, color = NA) +
+      geom_text(aes(y = 0, label = paste(name, " ")), vjust = 0.2, hjust = 1) +
+      geom_text(aes(y=cumulative_count,label = cumulative_count, hjust=0)) +
+      coord_flip(clip = "off", expand = FALSE) +
+      scale_y_continuous(labels = scales::comma) +
+      scale_x_reverse() +
+      guides(color = FALSE, fill = FALSE) +
+      theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x = element_line( size=.1, color="grey" ),
+        panel.grid.minor.x = element_line( size=.1, color="grey" ),
+        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey"),
+        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.background=element_blank(),
+        plot.margin = margin(2,2, 2, 4, "cm"))
+
+    # Create animation
+    anim_save("totalTripsToPlacesOverTime.gif",
+      animate(staticplot +
+        transition_states(day, transition_length = 4, state_length = 1) +
+        labs(title = "Day: {closest_state}",
+          subtitle = "Top 10 Locations",
+          caption = "Amount of trips") +
+        ease_aes('linear'),
+        nframes = 400,
+        fps = 10,
+        width = 600,
+        height = 600,
+        renderer = gifski_renderer()
+      )
+    )
+
+    # Return the image/gif
+    list(src = "totalTripsToPlacesOverTime.gif",
+      contentType = "image/gif",
+      width = 600,
+      height = 600,
+      alt = "This is alternate text"
+    )
+
+    # Delete the file
+  }, deleteFile = TRUE)
 }
