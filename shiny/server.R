@@ -179,7 +179,7 @@ server <- function(input, output) {
 
     if (isTruthy(input$locations)) {
       trips <- taxi_data_airports %>%
-        filter(PULocationID %in% taxi_data)
+        filter(PULocationID %in% airport_location_ids)
 
       airportTrips <- trips %>%
         filter(PULocationID != DOLocationID & (DOLocationID %in% input$locations | PULocationID %in% input$locations)) %>%
