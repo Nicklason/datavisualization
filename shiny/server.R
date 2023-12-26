@@ -94,7 +94,7 @@ server <- function(input, output) {
     breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
     
     # Use the intervals
-    total <- mutate(total, money_cat = cut(money, breaks_qt$brks))
+    total <- mutate(total, money_spent_in_USD = cut(money, breaks_qt$brks))
     
     # Add label to each row
     total <- total %>%
@@ -105,7 +105,7 @@ server <- function(input, output) {
     
     # Create plot
     p <- ggplot() +
-      geom_sf(data = total, aes(group = location_id, fill = money_cat, text = label), color = "white") +
+      geom_sf(data = total, aes(group = location_id, fill = money_spent_in_USD, text = label), color = "white") +
       scale_colour_distiller(palette = "Reds", name = "Frequency", guide = "colorbar") +
       coord_sf() +
       theme_void() +
