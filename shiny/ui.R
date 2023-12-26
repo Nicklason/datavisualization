@@ -99,6 +99,18 @@ ui <- navbarPage("My Application",
       )
     )
   )),
+  
+  tabPanel("Top 10 taxi locations over time", fluidPage(
+    titlePanel("Top 10 taxi locations over time"),
+    sidebarLayout(
+      sidebarPanel(
+        # Add any input controls if needed
+      ),
+      mainPanel(
+        imageOutput("totalTripsFromPlacesOverTime")
+      )
+    )
+  )),
   tabPanel("Speed", fluidPage(
     titlePanel("Speed"),
     sidebarLayout(
