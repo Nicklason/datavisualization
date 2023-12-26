@@ -98,5 +98,38 @@ ui <- navbarPage("My Application",
         dataTableOutput("speedAndDistanceTable")
       )
     )
+  )),
+  tabPanel("Speed", fluidPage(
+    titlePanel("Speed"),
+    sidebarLayout(
+      sidebarPanel(
+        # Add any input controls if needed
+      ),
+      mainPanel(
+        plotOutput("speed")
+      )
+    )
+  )),
+  tabPanel("Speed based on amount of passengers", fluidPage(
+    titlePanel("Speed based on amount of passengers"),
+    sidebarLayout(
+      sidebarPanel(
+        # Add any input controls if needed
+      ),
+      mainPanel(
+        plotOutput("speedBasedOnAmountOfPassengers")
+      )
+    )
+  )),
+  tabPanel("Distance traveled based on amount of passengers", fluidPage(
+    titlePanel("Distance traveled based on amount of passengers"),
+    sidebarLayout(
+      sidebarPanel(
+        # Add any input controls if needed
+      ),
+      mainPanel(
+        plotOutput("distancedBasedOnAmountOfPassengers")
+      )
+    )
   ))
 )
