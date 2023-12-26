@@ -18,6 +18,8 @@ library(classInt)
 library(glue)
 # dates
 library(lubridate)
+# arrange multiple plots (and other things too?) in a grid
+library(gridExtra)
 # create animations
 library(gganimate)
 # create gifs
@@ -42,6 +44,13 @@ airport_location_ids <- c(1, 132, 138)
 taxi_data_airports <- taxi_data %>%
   filter(PULocationID %in% airport_location_ids | DOLocationID %in% airport_location_ids)
 
+trip_time <- as.numeric(difftime(taxi_data$tpep_dropoff_datetime, taxi_data$tpep_pickup_datetime, units = "hours"))
+trip_distance <- taxi_data$trip_distance * 1.609344
+trip_speed <- trip_distance / trip_time
+
+trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID) %>%
+  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130)
+
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
   st_centroid() %>% 
@@ -61,15 +70,12 @@ server <- function(input, output) {
     mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
     mutate_at(c('location_id'), as.character) %>%
     left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
-
-    # Scale money down to not show scientific notation numbers
-    total$money_scaled = total$money / 100000
     
     # Create 7 intervals for the monies
-    breaks_qt <- classIntervals(c(0, total$money_scaled), n = 7, style = "quantile")
+    breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
 
     # Use the intervals
-    total <- mutate(total, money_cat = cut(money_scaled, breaks_qt$brks))
+    total <- mutate(total, money_cat = cut(money, breaks_qt$brks))
 
     # Add label to each row
     total <- total %>%
@@ -187,6 +193,145 @@ server <- function(input, output) {
     ggplotly(p, height = 1000)
   })
 
+  speedAndDistanceBrush <- NULL
+  makeReactiveBinding("speedAndDistanceBrush")
+
+  observeEvent(input$speedAndDistanceBrush, {
+    speedAndDistanceBrush <<- input$speedAndDistanceBrush
+  })
+
+  output$speedAndDistance <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed)) %>%
+      filter(
+        trip_distance >= input$xRangeDistanceAndSpeed[1] &
+        trip_distance <= input$xRangeDistanceAndSpeed[2] &
+        trip_speed >= input$yRangeDistanceAndSpeed[1] &
+        trip_speed <= input$yRangeDistanceAndSpeed[2]
+      )
+
+    brushed <- brushedPoints(stuff, speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
+
+    if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+      brushed <- brushed %>%
+        rename(LocationID = PULocationID)
+    } else {
+      brushed <- brushed %>%
+        rename(LocationID = DOLocationID)
+    }
+
+    brushed <- brushed %>% mutate(across(LocationID, as.character))
+
+    ggplot() +
+      geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2) +
+      geom_point(brushed, mapping = aes(x = trip_distance, y = trip_speed, color = LocationID), size=0.2) +
+      theme(legend.position="none")
+  })
+
+  output$speedAndDistancePie <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    filtered <- brushedPoints(stuff, speedAndDistanceBrush)
+
+    if (nrow(filtered) > 0) {
+      # calculate percentages of groups of locations (pu or do)
+
+      if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+        filtered <- filtered %>%
+          rename(LocationID = PULocationID)
+      } else {
+        filtered <- filtered %>%
+          rename(LocationID = DOLocationID)
+      }
+
+      result <- filtered %>%
+        mutate(across(LocationID, as.character)) %>%
+        group_by(LocationID) %>%
+        summarise(count = n()) %>%
+        mutate(percentage = count / sum(count) * 100)
+
+      p <- ggplot(result, aes(x="", y=count, fill=LocationID)) +
+        geom_bar(stat="identity", width=1) +
+        coord_polar("y", start=0)
+
+      # this is cool. you can extract the color from a plot, then sort categories lexicographically because that is how ggplot sorts it
+      # that can then be used to map categories and colors
+      #plot_data <- ggplot_build(p)$data[[1]]  # Extract data used for plotting
+      #category_colors <- plot_data$fill  # Extract fill colors used for categories
+      #unique_categories <- sort(as.character(unique(filtered$LocationID)))  # Get unique categories
+
+      # Map colors to categories
+      #color_map <- data.frame(category = unique_categories, color = category_colors)
+
+      #message(color_map)
+
+      p
+    }
+  })
+
+  output$speedAndDistanceTable <- renderDataTable({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    brushedPoints(stuff, speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
+  })
+
+  output$TaxiTripsByPayment <- renderPlot({
+    
+    # Extract the current value of the reactive locationID
+    current_location <- locationID()
+    
+    # Filter only relevant payment types (adjust the values as needed)
+    relevant_payment_types <- c("1", "2")
+    taxi_data_filtered <- taxi_data %>% filter(payment_type %in% relevant_payment_types)
+    
+    # Group by payment type and location
+    tripsByPaymentType <- taxi_data_filtered %>%
+      group_by(payment_type, !!sym(current_location)) %>%
+      summarise(trips = n()) %>%
+      mutate(across(all_of(current_location), as.character)) %>%
+      rename_with(~ "location_id", .cols = all_of(current_location)) %>%
+      distinct()  # Address many-to-many relationship warning
+    
+    # Calculate the total trips for each location
+    total_trips_by_location <- tripsByPaymentType %>%
+      group_by(location_id) %>%
+      summarise(total_trips = sum(trips))
+    
+    # Calculate the percentage of trips for each payment type at each location
+    tripsByPaymentType <- tripsByPaymentType %>%
+      left_join(total_trips_by_location, by = "location_id") %>%
+      mutate(percentage = (trips / total_trips) * 100)
+    
+    # Join simple feature from shape
+    grouped <- inner_join(taxi_shp, tripsByPaymentType, by = c("location_id" = "location_id"))
+    
+    # Plot for most common payment type at each location as a heatmap
+    plot_location <- ggplot(grouped, aes(group = location_id, fill = percentage, geometry = geometry)) +
+      geom_sf(color = "white") +
+      scale_fill_gradient(name = "Percentage", low = "blue", high = "orange") +
+      theme_void() +
+      ggtitle("% of Trips by Payment Type at each zone")
+    
+    # Overall total
+    total_by_payment <- taxi_data_filtered %>%
+      group_by(payment_type) %>%
+      summarise(total_trips = n())
+    
+    # Plot for overall total
+    plot_total <- ggplot(total_by_payment, aes(x = factor(payment_type), y = total_trips, fill = factor(payment_type))) +
+      geom_bar(stat = "identity") +
+      scale_fill_manual(name = "Payment_type", values = c("1" = "blue", "2" = "orange"), labels = c("Credit Card", "Cash")) +
+      theme_minimal() +
+      ggtitle("Overall Total Trips by Payment Type")
+    
+    # Arrange the two plots
+    grid.arrange(plot_location, plot_total, ncol = 2)
+  })
+  
   output$totalTripsFromPlacesOverTime <- renderImage({
     # Get day of month
     taxi_data$day <- day(taxi_data$tpep_pickup_datetime)
