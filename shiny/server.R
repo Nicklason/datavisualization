@@ -383,7 +383,7 @@ server <- function(input, output) {
     # Create animation
     anim_save("totalTripsToPlacesOverTime.gif",
       animate(staticplot +
-        transition_states(day, transition_length = 4, state_length = 1) +
+        transition_states(day, transition_length = 1, state_length = 0) +
         labs(title = "Day: {closest_state}",
           subtitle = "Top 10 Locations",
           caption = "Amount of trips") +
