@@ -48,8 +48,8 @@ trip_time <- as.numeric(difftime(taxi_data$tpep_dropoff_datetime, taxi_data$tpep
 trip_distance <- taxi_data$trip_distance * 1.609344
 trip_speed <- trip_distance / trip_time
 
-trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID) %>%
-  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130)
+trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID, passenger_count = taxi_data$passenger_count) %>%
+  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130 & passenger_count > 0)
 
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
@@ -383,7 +383,7 @@ server <- function(input, output) {
     # Create animation
     anim_save("totalTripsToPlacesOverTime.gif",
       animate(staticplot +
-        transition_states(day, transition_length = 4, state_length = 1) +
+        transition_states(day, transition_length = 1, state_length = 0) +
         labs(title = "Day: {closest_state}",
           subtitle = "Top 10 Locations",
           caption = "Amount of trips") +
@@ -406,4 +406,16 @@ server <- function(input, output) {
 
     # Delete the file
   }, deleteFile = TRUE)
+  
+  output$speed <- renderPlot({
+    boxplot(trip_time_distance_speed$trip_speed,outline = FALSE, xlab = "Taxi cap" , ylab = "Speed [km/h]")
+  })
+
+  output$speedBasedOnAmountOfPassengers <- renderPlot({
+    boxplot(trip_speed ~ passenger_count, data = trip_time_distance_speed, outline = FALSE, xlab = "Amount of passagers", ylab = "Speed [km/h]")
+  })
+
+  output$distancedBasedOnAmountOfPassengers <- renderPlot({
+    boxplot(trip_distance ~ passenger_count, data = trip_time_distance_speed, outline = FALSE, xlab = "Amount of passagers", ylab = "Distance [km]" )
+  })
 }
