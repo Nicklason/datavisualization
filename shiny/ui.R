@@ -99,7 +99,6 @@ ui <- navbarPage("My Application",
       )
     )
   )),
-  
   tabPanel("Top 10 taxi locations over time", fluidPage(
     titlePanel("Top 10 taxi locations over time"),
     sidebarLayout(
