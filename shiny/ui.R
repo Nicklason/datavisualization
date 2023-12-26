@@ -22,7 +22,7 @@ ui <- navbarPage("My Application",
           sliderInput("hour_slider", "Select Hour", min = 0, max = 23, value = 0),
           sliderInput("week_slider", "Select Week", min = 1, max = 52, value = 1),
           sliderInput("month_slider", "Select Month", min = 1, max = 12, value = 1),
-          selectInput("locations", "Select locations to highlight", choices = zones, multiple = TRUE)
+          selectInput("zone_filter", "Select Zones", choices = zones, multiple = TRUE)
       ),
       mainPanel(
         plotlyOutput("taxiPlot")
