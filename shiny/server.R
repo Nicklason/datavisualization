@@ -44,7 +44,7 @@ trip_distance <- taxi_data$trip_distance * 1.609344
 trip_speed <- trip_distance / trip_time
 
 trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID, passenger_count = taxi_data$passenger_count) %>%
-  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130)
+  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130 & passenger_count > 0)
 
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
