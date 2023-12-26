@@ -68,7 +68,7 @@ server <- function(input, output) {
       "Week" = filter(taxi_data, week(tpep_pickup_datetime) == input$week_slider),
       "Month" = filter(taxi_data, month(tpep_pickup_datetime) == input$month_slider)
     ) %>%
-      filter(zone == input$zone_filter)
+      filter(zone %in% airport_location_ids)
   })
   
   output$taxiPlot <- renderPlotly({
@@ -179,7 +179,7 @@ server <- function(input, output) {
 
     if (isTruthy(input$locations)) {
       trips <- taxi_data_airports %>%
-        filter(PULocationID %in% airport_location_ids)
+        filter(PULocationID %in% taxi_data)
 
       airportTrips <- trips %>%
         filter(PULocationID != DOLocationID & (DOLocationID %in% input$locations | PULocationID %in% input$locations)) %>%
