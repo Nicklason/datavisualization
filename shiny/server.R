@@ -57,44 +57,64 @@ centroids <- taxi_shp %>%
   bind_cols(as_data_frame(st_coordinates(.)))
 
 server <- function(input, output) {
+  
+  taxi_data2 <- mutate(taxi_data, PULocationID = as.character(PULocationID))
+  taxi_data2 <- taxi_data2 %>% left_join(taxi_shp %>% select(location_id, zone), by = c("PULocationID" = "location_id"))
+  
+  filtered_data_df <- reactive({
+    switch(
+      input$time_filter,
+      "Hour" = filter(taxi_data2, hour(tpep_pickup_datetime) == input$hour_slider),
+      "Week" = filter(taxi_data2, week(tpep_pickup_datetime) == input$week_slider),
+      "Month" = filter(taxi_data2, month(tpep_pickup_datetime) == input$month_slider)
+    ) %>%
+      filter(if (is.null(input$zone_filter) || length(input$zone_filter) == 0) TRUE else (PULocationID %in% input$zone_filter | DOLocationID %in% input$zone_filter))
+  })
+  
   output$taxiPlot <- renderPlotly({
+    # Check if filtered_data_df is not empty
+    if (nrow(filtered_data_df()) == 0) {
+      return(NULL)
+    }
+    
     # Calculate the total amount of money spent in each location
     total <- merge(
-      aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$DOLocationID), FUN=sum),
-      aggregate(taxi_data$total_amount, by=list(location_id=taxi_data$PULocationID), FUN=sum),
-      by="location_id",
-      all.x=TRUE,
-      all.y=TRUE
+      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$DOLocationID), FUN = sum),
+      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$PULocationID), FUN = sum),
+      by = "location_id",
+      all.x = TRUE,
+      all.y = TRUE
     ) %>%
-    mutate_at(c('x.x','x.y'), ~replace_na(.,0)) %>%
-    mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
-    mutate_at(c('location_id'), as.character) %>%
-    left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
+      mutate_at(c('x.x', 'x.y'), ~replace_na(., 0)) %>%
+      mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
+      mutate_at(c('location_id'), as.character) %>%
+      left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
     
     # Create 7 intervals for the monies
     breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
-
+    
     # Use the intervals
-    total <- mutate(total, money_cat = cut(money, breaks_qt$brks))
-
+    total <- mutate(total, money_spent_in_USD = cut(money, breaks_qt$brks))
+    
     # Add label to each row
     total <- total %>%
       mutate(
         model = rownames(.),
-        label = glue::glue('{zone} \nMoney spent: ${money}' )
+        label = glue::glue('{zone} \nMoney spent: ${money}')
       )
-
+    
     # Create plot
     p <- ggplot() +
-      geom_sf(data = total, aes(group = location_id, fill = money_cat, text = label), color = "white") +
-    scale_colour_distiller(palette="Reds", name="Frequency", guide = "colorbar") +
-    coord_sf() +
-    theme_void() +
+      geom_sf(data = total, aes(group = location_id, fill = money_spent_in_USD, text = label), color = "white") +
+      scale_colour_distiller(palette = "Reds", name = "Frequency", guide = "colorbar") +
+      coord_sf() +
+      theme_void() +
       scale_fill_brewer(palette = "OrRd")
-
+    
     # Make the plot interactive
     ggplotly(p, tooltip = "text", height = 1000)
   })
+  
   
   locationID <- reactive({
     switch(input$pickOrDrop,
