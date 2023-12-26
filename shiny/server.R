@@ -20,6 +20,11 @@ library(glue)
 library(lubridate)
 # arrange multiple plots (and other things too?) in a grid
 library(gridExtra)
+# create animations
+library(gganimate)
+# create gifs
+library(gifski)
+library(tidyverse)
 
 # Read the geojson file
 taxi_shp <- read_sf('https://data.cityofnewyork.us/api/geospatial/d3c5-ddgc?method=export&format=GeoJSON') # nolint
@@ -38,6 +43,13 @@ airport_location_ids <- c(1, 132, 138)
 # Filter dataset to only include trips to/from airports
 taxi_data_airports <- taxi_data %>%
   filter(PULocationID %in% airport_location_ids | DOLocationID %in% airport_location_ids)
+
+trip_time <- as.numeric(difftime(taxi_data$tpep_dropoff_datetime, taxi_data$tpep_pickup_datetime, units = "hours"))
+trip_distance <- taxi_data$trip_distance * 1.609344
+trip_speed <- trip_distance / trip_time
+
+trip_time_distance_speed <- data.frame(trip_time = trip_time, trip_distance = trip_distance, trip_speed = trip_speed, PULocationID = taxi_data$PULocationID, DOLocationID = taxi_data$DOLocationID, passenger_count = taxi_data$passenger_count) %>%
+  filter(trip_time > 0 & trip_distance > 0 & trip_speed < 130 & passenger_count > 0)
 
 # Calculate points at which to plot labels (https://stackoverflow.com/a/50860504/9698208) # nolint
 centroids <- taxi_shp %>% 
@@ -200,6 +212,93 @@ server <- function(input, output) {
 
     ggplotly(p, height = 1000)
   })
+
+  speedAndDistanceBrush <- NULL
+  makeReactiveBinding("speedAndDistanceBrush")
+
+  observeEvent(input$speedAndDistanceBrush, {
+    speedAndDistanceBrush <<- input$speedAndDistanceBrush
+  })
+
+  output$speedAndDistance <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed)) %>%
+      filter(
+        trip_distance >= input$xRangeDistanceAndSpeed[1] &
+        trip_distance <= input$xRangeDistanceAndSpeed[2] &
+        trip_speed >= input$yRangeDistanceAndSpeed[1] &
+        trip_speed <= input$yRangeDistanceAndSpeed[2]
+      )
+
+    brushed <- brushedPoints(stuff, speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
+
+    if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+      brushed <- brushed %>%
+        rename(LocationID = PULocationID)
+    } else {
+      brushed <- brushed %>%
+        rename(LocationID = DOLocationID)
+    }
+
+    brushed <- brushed %>% mutate(across(LocationID, as.character))
+
+    ggplot() +
+      geom_point(stuff, mapping = aes(x = trip_distance, y = trip_speed), size=0.2) +
+      geom_point(brushed, mapping = aes(x = trip_distance, y = trip_speed, color = LocationID), size=0.2) +
+      theme(legend.position="none")
+  })
+
+  output$speedAndDistancePie <- renderPlot({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    filtered <- brushedPoints(stuff, speedAndDistanceBrush)
+
+    if (nrow(filtered) > 0) {
+      # calculate percentages of groups of locations (pu or do)
+
+      if (input$pickOrDropDistanceAndSpeed == "DOLocationID") {
+        filtered <- filtered %>%
+          rename(LocationID = PULocationID)
+      } else {
+        filtered <- filtered %>%
+          rename(LocationID = DOLocationID)
+      }
+
+      result <- filtered %>%
+        mutate(across(LocationID, as.character)) %>%
+        group_by(LocationID) %>%
+        summarise(count = n()) %>%
+        mutate(percentage = count / sum(count) * 100)
+
+      p <- ggplot(result, aes(x="", y=count, fill=LocationID)) +
+        geom_bar(stat="identity", width=1) +
+        coord_polar("y", start=0)
+
+      # this is cool. you can extract the color from a plot, then sort categories lexicographically because that is how ggplot sorts it
+      # that can then be used to map categories and colors
+      #plot_data <- ggplot_build(p)$data[[1]]  # Extract data used for plotting
+      #category_colors <- plot_data$fill  # Extract fill colors used for categories
+      #unique_categories <- sort(as.character(unique(filtered$LocationID)))  # Get unique categories
+
+      # Map colors to categories
+      #color_map <- data.frame(category = unique_categories, color = category_colors)
+
+      #message(color_map)
+
+      p
+    }
+  })
+
+  output$speedAndDistanceTable <- renderDataTable({
+    stuff <- trip_time_distance_speed %>%
+      filter((!!sym(input$pickOrDropDistanceAndSpeed) %in% input$locationsDistanceAndSpeed))
+
+    brushedPoints(stuff, speedAndDistanceBrush) %>%
+      select(-one_of(input$pickOrDropDistanceAndSpeed))
+  })
+
   output$TaxiTripsByPayment <- renderPlot({
     
     # Extract the current value of the reactive locationID
@@ -253,5 +352,90 @@ server <- function(input, output) {
     grid.arrange(plot_location, plot_total, ncol = 2)
   })
   
+  output$totalTripsFromPlacesOverTime <- renderImage({
+    # Get day of month
+    taxi_data$day <- day(taxi_data$tpep_pickup_datetime)
+
+    # Get top 10 places each day
+    data <- taxi_data %>%
+      group_by(day, PULocationID) %>%
+      summarise(count = n()) %>%
+      group_by(PULocationID) %>%
+      mutate(cumulative_count = cumsum(count)) %>%
+      group_by(day) %>%
+      arrange(desc(cumulative_count)) %>%
+      top_n(10, cumulative_count) %>%
+      mutate(name = taxi_zones$Zone[PULocationID]) %>%
+      mutate(rank = rank(-cumulative_count),
+        Count_rel = cumulative_count / cumulative_count[rank==1])
+
+    # Create plot
+    staticplot = ggplot(data, aes(rank, group = name, 
+      fill = as.factor(name), color = as.factor(name))) +
+      geom_tile(aes(y = cumulative_count/2,
+        height = cumulative_count,
+        width = 0.9), alpha = 0.8, color = NA) +
+      geom_text(aes(y = 0, label = paste(name, " ")), vjust = 0.2, hjust = 1) +
+      geom_text(aes(y=cumulative_count,label = cumulative_count, hjust=0)) +
+      coord_flip(clip = "off", expand = FALSE) +
+      scale_y_continuous(labels = scales::comma) +
+      scale_x_reverse() +
+      guides(color = FALSE, fill = FALSE) +
+      theme(axis.line=element_blank(),
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position="none",
+        panel.background=element_blank(),
+        panel.border=element_blank(),
+        panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        panel.grid.major.x = element_line( size=.1, color="grey" ),
+        panel.grid.minor.x = element_line( size=.1, color="grey" ),
+        plot.title=element_text(size=25, hjust=0.5, face="bold", colour="grey"),
+        plot.subtitle=element_text(size=18, hjust=0.5, face="italic", color="grey"),
+        plot.caption =element_text(size=8, hjust=0.5, face="italic", color="grey"),
+        plot.background=element_blank(),
+        plot.margin = margin(2,2, 2, 4, "cm"))
+
+    # Create animation
+    anim_save("totalTripsToPlacesOverTime.gif",
+      animate(staticplot +
+        transition_states(day, transition_length = 1, state_length = 0) +
+        labs(title = "Day: {closest_state}",
+          subtitle = "Top 10 Locations",
+          caption = "Amount of trips") +
+        ease_aes('linear'),
+        nframes = 400,
+        fps = 10,
+        width = 600,
+        height = 600,
+        renderer = gifski_renderer()
+      )
+    )
+
+    # Return the image/gif
+    list(src = "totalTripsToPlacesOverTime.gif",
+      contentType = "image/gif",
+      width = 600,
+      height = 600,
+      alt = "This is alternate text"
+    )
+
+    # Delete the file
+  }, deleteFile = TRUE)
   
+  output$speed <- renderPlot({
+    boxplot(trip_time_distance_speed$trip_speed,outline = FALSE, xlab = "Taxi cap" , ylab = "Speed [km/h]")
+  })
+
+  output$speedBasedOnAmountOfPassengers <- renderPlot({
+    boxplot(trip_speed ~ passenger_count, data = trip_time_distance_speed, outline = FALSE, xlab = "Amount of passagers", ylab = "Speed [km/h]")
+  })
+
+  output$distancedBasedOnAmountOfPassengers <- renderPlot({
+    boxplot(trip_distance ~ passenger_count, data = trip_time_distance_speed, outline = FALSE, xlab = "Amount of passagers", ylab = "Distance [km]" )
+  })
 }
