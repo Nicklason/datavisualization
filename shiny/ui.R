@@ -56,5 +56,16 @@ ui <- navbarPage("My Application",
         plotlyOutput("taxiTripsAirports")
       )
     )
+  )),
+  tabPanel("Top 10 taxi locations over time", fluidPage(
+    titlePanel("Top 10 taxi locations over time"),
+    sidebarLayout(
+      sidebarPanel(
+        # Add any input controls if needed
+      ),
+      mainPanel(
+        imageOutput("totalTripsFromPlacesOverTime")
+      )
+    )
   ))
 )
