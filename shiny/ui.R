@@ -14,6 +14,17 @@ names(pickupOrDropoff) <- c("Pick up", "Drop off")
 
 # Define UI for application
 ui <- navbarPage("My Application",
+  tabPanel("Report", fluidPage(
+    titlePanel("Report"),
+    sidebarLayout(
+      sidebarPanel(
+        downloadButton("downloadReport", "Download PDF")
+      ),
+      mainPanel(
+        text("If downloaded file is download.htm please wait a few seconds and try again, this server is not fully started.")
+      )
+    )
+  )),
   tabPanel("Taxi Fares Map", fluidPage(
     titlePanel("Taxi Fares Map"),
     sidebarLayout(

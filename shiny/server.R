@@ -57,6 +57,21 @@ centroids <- taxi_shp %>%
   bind_cols(as_data_frame(st_coordinates(.)))
 
 server <- function(input, output) {
+  downloadFile <- function() {
+    url <- "https://raw.githubusercontent.com/Nicklason/datavisualization/main/report.pdf"
+    content <- readLines(url, warn = FALSE)
+    return(content)
+  }
+
+  output$downloadReport <- downloadHandler(
+    filename = function() {
+      paste("report_", Sys.Date(), ".pdf", sep = "")
+    },
+    content = function(file) {
+      content <- downloadFile()
+      writeLines(content, file)
+    }
+  )
   
   taxi_data2 <- mutate(taxi_data, PULocationID = as.character(PULocationID))
   taxi_data2 <- taxi_data2 %>% left_join(taxi_shp %>% select(location_id, zone), by = c("PULocationID" = "location_id"))
@@ -91,9 +106,6 @@ server <- function(input, output) {
       mutate(money = x.x + x.y, x.x = NULL, x.y = NULL) %>%
       mutate_at(c('location_id'), as.character) %>%
       left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
-    
-    total <- total %>%
-      filter(!is.na(money))
 
     # Create 7 intervals for the monies
     breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
@@ -107,6 +119,9 @@ server <- function(input, output) {
         model = rownames(.),
         label = glue::glue('{zone} \nMoney spent: ${money}')
       )
+
+    total <- total %>%
+      filter(!is.na(money))
     
     # Create plot
     p <- ggplot() +
@@ -358,6 +373,16 @@ server <- function(input, output) {
   })
   
   output$totalTripsFromPlacesOverTime <- renderImage({
+    # If the file already exists use that one
+    if (file.exists("totalTripsToPlacesOverTime.gif")) {
+      return(list(src = "totalTripsToPlacesOverTime.gif",
+        contentType = "image/gif",
+        width = 600,
+        height = 600,
+        alt = "This is alternate text"
+      ))
+    }
+
     # Get day of month
     taxi_data$day <- day(taxi_data$tpep_pickup_datetime)
 
@@ -430,7 +455,7 @@ server <- function(input, output) {
     )
 
     # Delete the file
-  }, deleteFile = TRUE)
+  })
   
   output$speed <- renderPlot({
     boxplot(trip_time_distance_speed$trip_speed,outline = FALSE, xlab = "Taxi cap" , ylab = "Speed [km/h]")
