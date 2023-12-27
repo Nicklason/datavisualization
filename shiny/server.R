@@ -72,15 +72,17 @@ server <- function(input, output) {
   })
   
   output$taxiPlot <- renderPlotly({
+    filtered_data <- filtered_data_df()
+
     # Check if filtered_data_df is not empty
-    if (nrow(filtered_data_df()) == 0) {
+    if (nrow(filtered_data) == 0) {
       return(NULL)
     }
     
     # Calculate the total amount of money spent in each location
     total <- merge(
-      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$DOLocationID), FUN = sum),
-      aggregate(filtered_data_df()$total_amount, by = list(location_id = filtered_data_df()$PULocationID), FUN = sum),
+      aggregate(filtered_data$total_amount, by = list(location_id = filtered_data$DOLocationID), FUN = sum),
+      aggregate(filtered_data$total_amount, by = list(location_id = filtered_data$PULocationID), FUN = sum),
       by = "location_id",
       all.x = TRUE,
       all.y = TRUE
@@ -90,6 +92,9 @@ server <- function(input, output) {
       mutate_at(c('location_id'), as.character) %>%
       left_join(taxi_shp, ., by = c('location_id' = 'location_id'))
     
+    total <- total %>%
+      filter(!is.na(money))
+
     # Create 7 intervals for the monies
     breaks_qt <- classIntervals(c(0, total$money), n = 7, style = "quantile")
     
