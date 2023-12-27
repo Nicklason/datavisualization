@@ -21,7 +21,7 @@ ui <- navbarPage("My Application",
         downloadButton("downloadReport", "Download PDF")
       ),
       mainPanel(
-        text("If downloaded file is download.htm please wait a few seconds and try again, this server is not fully started.")
+        h5("If downloaded file is download.htm please wait a few seconds and try again, this server is not fully started. Some graphs takes longer to load please be patient. Enjoy!"),
       )
     )
   )),
