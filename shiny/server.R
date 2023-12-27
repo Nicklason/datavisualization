@@ -68,12 +68,12 @@ server <- function(input, output) {
       "Week" = filter(taxi_data2, week(tpep_pickup_datetime) == input$week_slider),
       "Month" = filter(taxi_data2, month(tpep_pickup_datetime) == input$month_slider)
     ) %>%
-    filter(if (is.null(input$zone_filter) || length(input$zone_filter) == 0) TRUE else (PULocationID %in% input$zone_filter | DOLocationID %in% input$zone_filter))
+      filter(if (is.null(input$zone_filter) || length(input$zone_filter) == 0) TRUE else (PULocationID %in% input$zone_filter | DOLocationID %in% input$zone_filter))
   })
   
   output$taxiPlot <- renderPlotly({
     filtered_data <- filtered_data_df()
-    
+
     # Check if filtered_data_df is not empty
     if (nrow(filtered_data) == 0) {
       return(NULL)
