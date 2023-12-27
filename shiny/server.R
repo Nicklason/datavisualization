@@ -62,11 +62,11 @@ server <- function(input, output) {
   taxi_data2 <- taxi_data2 %>% left_join(taxi_shp %>% select(location_id, zone), by = c("PULocationID" = "location_id"))
   
   filtered_data_df <- reactive({
-  switch(
-    input$time_filter,
-    "Hour" = filter(taxi_data2, hour(tpep_pickup_datetime) == input$hour_slider),
-    "Week" = filter(taxi_data2, week(tpep_pickup_datetime) == input$week_slider),
-    "Month" = filter(taxi_data2, month(tpep_pickup_datetime) == input$month_slider)
+    switch(
+      input$time_filter,
+      "Hour" = filter(taxi_data2, hour(tpep_pickup_datetime) == input$hour_slider),
+      "Week" = filter(taxi_data2, week(tpep_pickup_datetime) == input$week_slider),
+      "Month" = filter(taxi_data2, month(tpep_pickup_datetime) == input$month_slider)
     ) %>%
     filter(if (is.null(input$zone_filter) || length(input$zone_filter) == 0) TRUE else (PULocationID %in% input$zone_filter | DOLocationID %in% input$zone_filter)) %>%
     filter(!is.na(total_amount))
