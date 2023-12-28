@@ -18,10 +18,10 @@ ui <- navbarPage("My Application",
     titlePanel("Report"),
     sidebarLayout(
       sidebarPanel(
-        downloadButton("downloadReport", "Download PDF")
+        a(href = "https://raw.githubusercontent.com/Nicklason/datavisualization/main/report.pdf", "Download PDF")
       ),
       mainPanel(
-        h5("If downloaded file is download.htm please wait a few seconds and try again, this server is not fully started. Some graphs takes longer to load please be patient. Enjoy!"),
+        h5("Some graphs takes longer to load please be patient. Enjoy!"),
       )
     )
   )),
