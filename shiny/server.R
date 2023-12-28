@@ -56,23 +56,7 @@ centroids <- taxi_shp %>%
   st_centroid() %>% 
   bind_cols(as_data_frame(st_coordinates(.)))
 
-server <- function(input, output) {
-  downloadFile <- function() {
-    url <- "https://raw.githubusercontent.com/Nicklason/datavisualization/main/report.pdf"
-    content <- readLines(url, warn = FALSE)
-    return(content)
-  }
-
-  output$downloadReport <- downloadHandler(
-    filename = function() {
-      paste("report_", Sys.Date(), ".pdf", sep = "")
-    },
-    content = function(file) {
-      content <- downloadFile()
-      writeLines(content, file)
-    }
-  )
-  
+server <- function(input, output) {  
   taxi_data2 <- mutate(taxi_data, PULocationID = as.character(PULocationID))
   taxi_data2 <- taxi_data2 %>% left_join(taxi_shp %>% select(location_id, zone), by = c("PULocationID" = "location_id"))
   
